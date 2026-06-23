@@ -1,0 +1,36 @@
+# Offsed SegDet dataset (OPEDD/Off-Road, left camera)
+# Preprocess with: weights/prepare_offsed_data.py
+#
+# Segment anything (detect only cares about thing classes 13-19):
+# 0: background (void)
+# 1-7: thing classes (for detection)
+# 8+: stuff classes (semantic only)
+
+path: data/processed/offsed_segdet
+train: images
+val: images
+nc: 20
+num_thing_classes: 7
+names:
+  0: background
+  1: obstacle
+  2: person
+  3: held object
+  4: car
+  5: truck
+  6: camper
+  7: excavator
+  8: road
+  9: sky
+  10: building
+  11: sidewalk
+  12: tree
+  13: grass
+  14: water
+  15: rock
+  16: fence
+  17: mountain
+  18: void
+  19: other
+masks_dir: masks
+thing_class_names: [obstacle, person, held object, car, truck, camper, excavator]

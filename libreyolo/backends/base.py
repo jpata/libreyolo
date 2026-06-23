@@ -681,6 +681,11 @@ class BaseBackend(ABC):
                 all_outputs, effective_imgsz, orig_w, orig_h, conf, ratio
             )
             return boxes, scores, cls, None
+        elif self.model_family == "segdet":
+            boxes, scores, cls = self._parse_segdet(
+                all_outputs, orig_w, orig_h, conf, iou, max_det
+            )
+            return boxes, scores, cls, None
         else:
             parsed = self._parse_yolo9(
                 all_outputs, effective_imgsz, orig_w, orig_h, conf, iou, max_det
@@ -1714,6 +1719,72 @@ class BaseBackend(ABC):
 
         mask = scores > conf
         return boxes[mask], scores[mask], class_ids[mask]
+
+    def _parse_segdet(self, all_outputs, orig_w, orig_h, conf, iou, max_det):
+        """Parse SegDet outputs: (semantic_logits, detection_logits) tuple.
+
+        detection_logits: (1, 4+1+num_thing_classes, grid_h, grid_w)
+        No NMS — _build_result handles it.
+        """
+        import numpy as np
+
+        _, det_logits = all_outputs[0], all_outputs[1]
+        if det_logits.ndim == 4:
+            pred = det_logits[0]
+        else:
+            pred = det_logits
+        c, gh, gw = pred.shape
+        num_thing_classes = c - 5
+
+        pred_xy = 1.0 / (1.0 + np.exp(-pred[0:2]))
+        pred_wh = np.exp(np.clip(pred[2:4], -5, 5))
+        pred_obj = 1.0 / (1.0 + np.exp(-pred[4]))
+        pred_cls = pred[5:]
+
+        if num_thing_classes > 1:
+            exp_c = np.exp(pred_cls - pred_cls.max(axis=0, keepdims=True))
+            pred_cls = exp_c / exp_c.sum(axis=0, keepdims=True)
+        else:
+            pred_cls = 1.0 / (1.0 + np.exp(-pred_cls))
+
+        boxes_list = []
+        scores_list = []
+        classes_list = []
+        for y in range(gh):
+            for x in range(gw):
+                obj_score = float(pred_obj[y, x])
+                if obj_score < conf:
+                    continue
+                dx = float(pred_xy[0, y, x])
+                dy = float(pred_xy[1, y, x])
+                dw = float(pred_wh[0, y, x])
+                dh = float(pred_wh[1, y, x])
+                cx_cell = (x + dx) / gw
+                cy_cell = (y + dy) / gh
+                w_box = dw / gw
+                h_box = dh / gh
+                x1 = cx_cell - w_box / 2.0
+                y1 = cy_cell - h_box / 2.0
+                x2 = cx_cell + w_box / 2.0
+                y2 = cy_cell + h_box / 2.0
+                if num_thing_classes > 1:
+                    class_id = int(np.argmax(pred_cls[:, y, x]))
+                    class_score = float(pred_cls[class_id, y, x])
+                else:
+                    class_id = 0
+                    class_score = float(pred_cls[0, y, x])
+                boxes_list.append([x1, y1, x2, y2])
+                scores_list.append(obj_score * class_score)
+                classes_list.append(class_id)
+
+        if not boxes_list:
+            return np.empty((0, 4)), np.empty(0), np.empty(0)
+
+        boxes_np = np.array(boxes_list, dtype=np.float32)
+        scores_np = np.array(scores_list, dtype=np.float32)
+        classes_np = np.array(classes_list, dtype=np.int32)
+
+        return boxes_np, scores_np, classes_np
 
     # =========================================================================
     # Result building

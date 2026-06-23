@@ -17,6 +17,7 @@ _DETR_TUPLE_OUTPUT_FAMILIES = {
     "rtdetr",
     "rtdetrv2",
     "rtdetrv4",
+    "segdet",
 }
 
 

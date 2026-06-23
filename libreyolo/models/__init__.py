@@ -59,6 +59,7 @@ from .rtdetrv2.model import LibreRTDETRv2  # noqa: E402
 from .rtmdet.model import LibreRTMDet  # noqa: E402
 from .l2cs.model import LibreL2CS  # noqa: E402,F401  (import registers family)
 from .fomo.model import LibreFOMO  # noqa: E402,F401  (import registers family)
+from .segdet.model import LibreSegDet  # noqa: E402,F401  (import registers family)
 
 
 def _ensure_rfdetr():
@@ -455,7 +456,7 @@ def LibreYOLO(
     if matched_cls is None:
         raise ValueError(
             "Could not detect model architecture from state dict keys.\n"
-            "Supported architectures: YOLOX, YOLOv9, YOLOv9-E2E, YOLO-NAS, RT-DETR, RF-DETR, D-FINE, DEIM, DEIMv2."
+            "Supported architectures: YOLOX, YOLOv9, YOLOv9-E2E, YOLO-NAS, RT-DETR, RF-DETR, D-FINE, DEIM, DEIMv2, SegDet."
         )
 
     # Auto-detect size
@@ -603,5 +604,6 @@ __all__ = [
     "LibreRTDETRv2",
     "LibreRTDETRv4",
     "LibreFOMO",
+    "LibreSegDet",
     "try_ensure_rfdetr",
 ]
