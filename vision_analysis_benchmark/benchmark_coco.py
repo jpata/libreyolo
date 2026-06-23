@@ -29,20 +29,25 @@ from libreyolo import LibreYOLO
 # ============================================================================
 
 LIBREYOLO_MODELS = {
-    "rfdetr": {
-        "variants": ["n", "s", "m", "l"],
-        "weights_pattern": "LibreRFDETR{variant}.pt",
-        "input_size": 560,
-    },
+#    "rfdetr": {
+#        "variants": ["n", "s", "m", "l"],
+#        "weights_pattern": "LibreRFDETR{variant}.pt",
+#        "input_size": 560,
+#    },
     "yolo9": {
         "variants": ["t", "s", "m", "c"],
         "weights_pattern": "LibreYOLO9{variant}.pt",
         "input_size": 640,
     },
-    "yolox": {
-        "variants": ["n", "t", "s", "m", "l", "x"],
-        "weights_pattern": "LibreYOLOX{variant}.pt",
-        "input_size": 640,
+#    "yolox": {
+#        "variants": ["n", "t", "s", "m", "l", "x"],
+#        "weights_pattern": "LibreYOLOX{variant}.pt",
+#        "input_size": 640,
+#    },
+    "segdet": {
+        "variants": ["n", "s", "m", "l"],
+        "weights_pattern": "LibreSegDet{variant}.pt",
+        "input_size": None,
     },
 }
 

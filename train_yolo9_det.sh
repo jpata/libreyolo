@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# train_yolo9_det.sh — Train YOLOv9 detection (7 thing classes)
+# train_yolo9_det.sh — Train YOLOv9 detection on COCO2017 (80 classes)
 #
 # Usage:
 #   ./train_yolo9_det.sh --output OUTPUT_DIR [--model-size SIZE] [--epochs N]
@@ -11,11 +11,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-OUTPUT_DIR="../data/processed/offsed_segdet"
+OUTPUT_DIR="processed/coco_segdet"
 MODEL_SIZE="s"
 EPOCHS=100
 BATCH=32
-IMGSZ=416
+IMGSZ=640
 DEVICE=""
 WORKERS=4
 
@@ -33,14 +33,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 OUTPUT_DIR="$(realpath -m "$OUTPUT_DIR")"
-DATA_YAML="${OUTPUT_DIR}/dataset_yolo9_det.yaml"
+DATA_YAML="datasets/coco-local.yaml"
 RESULT_FILE="${OUTPUT_DIR}/result_yolo9_det.json"
-
-if [ ! -f "$DATA_YAML" ]; then
-    echo "ERROR: Dataset YAML not found: $DATA_YAML"
-    echo "Run ./prepare_offsed.sh first."
-    exit 1
-fi
 
 cd "$SCRIPT_DIR"
 
@@ -65,7 +59,7 @@ from libreyolo import LibreYOLO9
 model = LibreYOLO9(
     model_path=None,
     size='$MODEL_SIZE',
-    nb_classes=7,
+    nb_classes=80,
     task='detect',
     device='${DEVICE:-auto}',
 )

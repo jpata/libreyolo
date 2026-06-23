@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-OUTPUT_DIR="../data/processed/offsed_segdet"
+OUTPUT_DIR="datasets/coco"
 MODEL_SIZE="s"
 EPOCHS=100
 BATCH=32
