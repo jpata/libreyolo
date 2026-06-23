@@ -20,6 +20,9 @@ def postprocess_detect(output, conf_thres, iou_thres, original_size, max_det=300
         }
 
     box_t = torch.tensor([b[:4] for b in boxes], dtype=torch.float32)
+    box_t[:, [0, 2]] *= orig_w
+    box_t[:, [1, 3]] *= orig_h
+
     score_t = torch.tensor([b[4] for b in boxes], dtype=torch.float32)
     cls_t = torch.tensor([int(b[5]) for b in boxes], dtype=torch.int)
 

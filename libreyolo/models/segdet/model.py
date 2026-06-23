@@ -395,3 +395,63 @@ class LibreSegDet(BaseModel):
         self._restore_after_training(results)
 
         return results
+
+    def val(
+        self,
+        data: str | None = None,
+        batch: int = 16,
+        imgsz: int | None = None,
+        conf: float = 0.001,
+        iou: float = 0.6,
+        workers: int = 4,
+        allow_download_scripts: bool = False,
+        device: str | None = None,
+        split: str = "val",
+        augment: bool = False,
+        save_json: bool = False,
+        verbose: bool = True,
+        *,
+        plots: bool | None = None,
+        **kwargs,
+    ) -> Dict:
+        """Run validation on a dataset.
+
+        For LibreSegDet, runs both detection and semantic segmentation validation and merges results.
+        """
+        from libreyolo.validation import (
+            DetectionValidator,
+            SemanticValidator,
+            ValidationConfig,
+        )
+
+        if imgsz is None:
+            imgsz = self._get_input_size()
+        if plots is not None and "save_plots" not in kwargs:
+            kwargs["save_plots"] = plots
+
+        config = ValidationConfig(
+            data=data,
+            batch_size=batch,
+            imgsz=imgsz,
+            conf_thres=conf,
+            iou_thres=iou,
+            num_workers=0,
+            allow_download_scripts=allow_download_scripts,
+            device=device or str(self.device),
+            split=split,
+            augment=augment,
+            save_json=save_json,
+            verbose=verbose,
+            **kwargs,
+        )
+
+        det_validator = DetectionValidator(model=self, config=config)
+        det_results = det_validator()
+
+        sem_validator = SemanticValidator(model=self, config=config)
+        sem_results = sem_validator()
+
+        results = {}
+        results.update(det_results)
+        results.update(sem_results)
+        return results
