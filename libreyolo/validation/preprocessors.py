@@ -681,3 +681,66 @@ class FOMOValPreprocessor(BaseValPreprocessor):
             padded_targets[:n] = targets[:n]
 
         return resized, padded_targets
+
+
+class SegDetValPreprocessor(BaseValPreprocessor):
+    """SegDet validation preprocessor: simple RGB resize + ImageNet mean/std normalization.
+
+    Matches the training pipeline in ``SegDetDataset`` and ``LibreSegDet._preprocess``:
+    PIL BILINEAR resize to a fixed square, RGB channel order, and ImageNet
+    normalisation.  The default ``StandardValPreprocessor`` uses BGR and no
+    normalisation, so without this the model evaluates on a completely
+    different distribution and mAP collapses to zero.
+    """
+
+    MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+    STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+    @property
+    def normalize(self) -> bool:
+        return False
+
+    @property
+    def custom_normalization(self) -> bool:
+        return True
+
+    @property
+    def wants_unresized_image(self) -> bool:
+        return True
+
+    def __call__(
+        self, img: np.ndarray, targets: np.ndarray, input_size: Tuple[int, int]
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        orig_h, orig_w = img.shape[:2]
+        target_h, target_w = input_size
+
+        # BGR (cv2) → RGB, then simple bilinear resize
+        rgb_img = img[:, :, ::-1]
+        resized = np.array(
+            Image.fromarray(rgb_img).resize(
+                (target_w, target_h), Image.Resampling.BILINEAR,
+            ),
+            dtype=np.float32,
+        )
+        resized = resized / 255.0
+        resized = (resized - self.MEAN) / self.STD
+        resized = resized.transpose(2, 0, 1)
+        resized = np.ascontiguousarray(resized, dtype=np.float32)
+
+        padded_targets = np.zeros((self.max_labels, 5), dtype=np.float32)
+        if len(targets) > 0:
+            targets = np.array(targets).copy()
+            n = min(len(targets), self.max_labels)
+
+            # Simple resize scaling (no letterbox)
+            scale_x = target_w / orig_w
+            scale_y = target_h / orig_h
+
+            targets[:n, 0] *= scale_x
+            targets[:n, 1] *= scale_y
+            targets[:n, 2] *= scale_x
+            targets[:n, 3] *= scale_y
+
+            padded_targets[:n] = targets[:n]
+
+        return resized, padded_targets

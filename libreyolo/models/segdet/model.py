@@ -84,6 +84,12 @@ class LibreSegDet(BaseModel):
     DEFAULT_TASK = "detect"
     TTA_ENABLED = False
 
+    def _get_val_preprocessor(self, img_size: int | None = None):
+        if img_size is None:
+            img_size = self._get_input_size()
+        from ...validation.preprocessors import SegDetValPreprocessor
+        return SegDetValPreprocessor(img_size=(img_size, img_size))
+
     @classmethod
     def _get_train_config(cls):
         from .trainer import SegDetTrainConfig
