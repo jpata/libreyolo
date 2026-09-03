@@ -25,6 +25,7 @@ from .callbacks import (
     TrainEpochEvent,
     TrainExceptionEvent,
     TrainStartEvent,
+    TrainStepEvent,
 )
 from .config import TrainConfig
 from .loggers import resolve_loggers
@@ -1448,6 +1449,32 @@ class BaseTrainer(ABC):
             epoch_seconds=float(epoch_seconds),
         )
 
+    def _build_train_step_event(
+        self,
+        *,
+        epoch: int,
+        batch_idx: int,
+        train_loss: float,
+        train_loss_items: Mapping[str, float],
+        optimizer_step: bool,
+    ) -> TrainStepEvent:
+        batches_per_epoch = len(self.train_loader)
+        return TrainStepEvent(
+            epoch=epoch + 1,
+            total_epochs=self.config.epochs,
+            batch=batch_idx + 1,
+            batches_per_epoch=batches_per_epoch,
+            global_step=epoch * batches_per_epoch + batch_idx + 1,
+            optimizer_step=optimizer_step,
+            model_family=self.get_model_family(),
+            model_size=getattr(self.config, "size", None),
+            task=getattr(getattr(self, "wrapper_model", None), "task", "detect"),
+            save_dir=str(self.save_dir),
+            train_loss=float(train_loss),
+            train_loss_items=self._scalar_mapping(train_loss_items),
+            lr=self._current_lrs(),
+        )
+
     def _update_best_state(
         self, epoch: int, val_metrics: Optional[Dict[str, Any]]
     ) -> bool:
@@ -1613,6 +1640,17 @@ class BaseTrainer(ABC):
             self._set_optimizer_lr(lr)
             num_batches += 1
 
+            if is_main_process():
+                self.callbacks.on_train_step_end(
+                    self._build_train_step_event(
+                        epoch=epoch,
+                        batch_idx=batch_idx,
+                        train_loss=loss_val,
+                        train_loss_items=loss_components,
+                        optimizer_step=True,
+                    )
+                )
+
             # Progress bar
             postfix = {"loss": f"{loss_val:.4f}", "lr": f"{lr:.6f}"}
             postfix.update({k: f"{v:.4f}" for k, v in loss_components.items()})
@@ -1737,6 +1775,17 @@ class BaseTrainer(ABC):
             num_batches += 1
             for name, value in loss_components.items():
                 loss_component_sums[name] = loss_component_sums.get(name, 0.0) + value
+
+            if is_main_process():
+                self.callbacks.on_train_step_end(
+                    self._build_train_step_event(
+                        epoch=epoch,
+                        batch_idx=batch_idx,
+                        train_loss=loss_val,
+                        train_loss_items=loss_components,
+                        optimizer_step=is_opt_step,
+                    )
+                )
 
             del outputs, loss
 

@@ -20,6 +20,7 @@ from ..callbacks import (
     TrainEpochEvent,
     TrainExceptionEvent,
     TrainStartEvent,
+    TrainStepEvent,
 )
 
 logger = logging.getLogger("libreyolo")
@@ -68,6 +69,9 @@ class BaseLogger:
     def on_train_start(self, event: TrainStartEvent) -> None:
         self._guarded(self._handle_start, event)
 
+    def on_train_step_end(self, event: TrainStepEvent) -> None:
+        self._guarded(self._handle_step_end, event)
+
     def on_train_epoch_end(self, event: TrainEpochEvent) -> None:
         self._guarded(self._handle_epoch_end, event)
 
@@ -100,6 +104,9 @@ class BaseLogger:
 
     def _handle_start(self, event: TrainStartEvent) -> None:
         """Open the backend run/writer."""
+
+    def _handle_step_end(self, event: TrainStepEvent) -> None:
+        """Log a completed training batch when supported by the backend."""
 
     def _handle_epoch_end(self, event: TrainEpochEvent) -> None:
         """Log per-epoch metrics."""

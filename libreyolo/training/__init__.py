@@ -9,6 +9,7 @@ from .callbacks import (
     TrainEpochEvent as TrainEpochEvent,
     TrainExceptionEvent as TrainExceptionEvent,
     TrainStartEvent as TrainStartEvent,
+    TrainStepEvent as TrainStepEvent,
 )
 from .config import (
     TrainConfig as TrainConfig,

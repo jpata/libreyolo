@@ -27,6 +27,31 @@ class TrainStartEvent:
 
 
 @dataclass(frozen=True)
+class TrainStepEvent:
+    """Data emitted after each training batch has completed."""
+
+    epoch: int
+    total_epochs: int
+    batch: int
+    batches_per_epoch: int
+    global_step: int
+    optimizer_step: bool
+    model_family: str
+    model_size: str | None
+    task: str
+    save_dir: str
+    train_loss: float
+    train_loss_items: Mapping[str, float]
+    lr: Mapping[str, float]
+
+    def __post_init__(self):
+        object.__setattr__(
+            self, "train_loss_items", MappingProxyType(dict(self.train_loss_items))
+        )
+        object.__setattr__(self, "lr", MappingProxyType(dict(self.lr)))
+
+
+@dataclass(frozen=True)
 class TrainEpochEvent:
     """Data emitted after a training epoch has completed.
 
@@ -106,6 +131,9 @@ class TrainCallback(Protocol):
     def on_train_start(self, event: TrainStartEvent) -> None:
         """Handle the start of training."""
 
+    def on_train_step_end(self, event: TrainStepEvent) -> None:
+        """Handle a completed training batch."""
+
     def on_train_epoch_end(self, event: TrainEpochEvent) -> None:
         """Handle an epoch-complete training event."""
 
@@ -147,6 +175,7 @@ class TrainCallbackList:
             hasattr(callback, name)
             for name in (
                 "on_train_start",
+                "on_train_step_end",
                 "on_train_epoch_end",
                 "on_train_end",
                 "on_train_exception",
@@ -171,6 +200,9 @@ class TrainCallbackList:
 
     def on_train_start(self, event: TrainStartEvent) -> None:
         self._dispatch("on_train_start", event)
+
+    def on_train_step_end(self, event: TrainStepEvent) -> None:
+        self._dispatch("on_train_step_end", event)
 
     def on_train_epoch_end(self, event: TrainEpochEvent) -> None:
         self._dispatch("on_train_epoch_end", event, call_plain=True)

@@ -14,6 +14,7 @@ from libreyolo.training.callbacks import (
     TrainEpochEvent,
     TrainExceptionEvent,
     TrainStartEvent,
+    TrainStepEvent,
 )
 from libreyolo.training.trainer import BaseTrainer
 
@@ -68,6 +69,24 @@ def _start_event() -> TrainStartEvent:
         model_size="s",
         task="detect",
         save_dir="/tmp/libreyolo",
+    )
+
+
+def _step_event() -> TrainStepEvent:
+    return TrainStepEvent(
+        epoch=1,
+        total_epochs=2,
+        batch=3,
+        batches_per_epoch=10,
+        global_step=3,
+        optimizer_step=True,
+        model_family="dummy",
+        model_size="s",
+        task="detect",
+        save_dir="/tmp/libreyolo",
+        train_loss=1.5,
+        train_loss_items={"box": 0.2},
+        lr={"group0": 0.01},
     )
 
 
@@ -141,6 +160,9 @@ def test_train_callback_list_dispatches_lifecycle_methods_only_to_objects():
         def on_train_epoch_end(self, received_event):
             received.append(("epoch", type(received_event).__name__))
 
+        def on_train_step_end(self, received_event):
+            received.append(("step", type(received_event).__name__))
+
         def on_train_end(self, received_event):
             received.append(("end", type(received_event).__name__))
 
@@ -150,12 +172,14 @@ def test_train_callback_list_dispatches_lifecycle_methods_only_to_objects():
     callbacks = TrainCallbackList([epoch_fn, ObjectCallback()])
 
     callbacks.on_train_start(start_event)
+    callbacks.on_train_step_end(_step_event())
     callbacks.on_train_epoch_end(epoch_event)
     callbacks.on_train_end(end_event)
     callbacks.on_train_exception(exception_event)
 
     assert received == [
         ("start", "TrainStartEvent"),
+        ("step", "TrainStepEvent"),
         ("fn", "TrainEpochEvent"),
         ("epoch", "TrainEpochEvent"),
         ("end", "TrainEndEvent"),
@@ -173,6 +197,7 @@ def test_object_callbacks_may_implement_only_one_lifecycle_method():
     callbacks = TrainCallbackList(StartOnlyCallback())
 
     callbacks.on_train_start(_start_event())
+    callbacks.on_train_step_end(_step_event())
     callbacks.on_train_epoch_end(_event())
     callbacks.on_train_end(_end_event())
     callbacks.on_train_exception(_exception_event())
@@ -187,6 +212,10 @@ def test_train_epoch_event_mappings_are_read_only():
         event.train_loss_items["box"] = 0.2
     with pytest.raises(TypeError):
         event.lr["group0"] = 0.2
+
+    step_event = _step_event()
+    with pytest.raises(TypeError):
+        step_event.train_loss_items["box"] = 0.3
 
     end_event = _end_event()
     with pytest.raises(TypeError):

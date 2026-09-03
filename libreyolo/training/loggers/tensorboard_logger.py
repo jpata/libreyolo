@@ -10,6 +10,7 @@ from ..callbacks import (
     TrainEpochEvent,
     TrainExceptionEvent,
     TrainStartEvent,
+    TrainStepEvent,
 )
 from .base import BaseLogger, epoch_metrics
 
@@ -53,6 +54,25 @@ class TensorBoardLogger(BaseLogger):
         for name, value in epoch_metrics(event).items():
             self._writer.add_scalar(name, value, global_step=event.epoch)
         self._writer.flush()
+
+    def _handle_step_end(self, event: TrainStepEvent) -> None:
+        if self._writer is None:
+            return
+        self._writer.add_scalar("train_step/loss", event.train_loss, event.global_step)
+        for name, value in event.train_loss_items.items():
+            self._writer.add_scalar(
+                f"train_step/loss/{name}", value, event.global_step
+            )
+        # Some transformer optimizers use one parameter group per tensor. Do
+        # not emit hundreds of redundant learning-rate series every batch.
+        if event.lr:
+            values = list(event.lr.values())
+            self._writer.add_scalar(
+                "train_step/lr/min", min(values), event.global_step
+            )
+            self._writer.add_scalar(
+                "train_step/lr/max", max(values), event.global_step
+            )
 
     def _handle_end(self, event: TrainEndEvent) -> None:
         self._close()

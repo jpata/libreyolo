@@ -13,6 +13,7 @@ from libreyolo.training.callbacks import (
     TrainEpochEvent,
     TrainExceptionEvent,
     TrainStartEvent,
+    TrainStepEvent,
 )
 from libreyolo.training.loggers import (
     MLflowLogger,
@@ -112,6 +113,24 @@ def _epoch_event() -> TrainEpochEvent:
         best_metric_name="metrics/mAP50-95",
         best_epoch=1,
         epoch_seconds=2.5,
+    )
+
+
+def _step_event() -> TrainStepEvent:
+    return TrainStepEvent(
+        epoch=2,
+        total_epochs=2,
+        batch=3,
+        batches_per_epoch=10,
+        global_step=13,
+        optimizer_step=True,
+        model_family="yolo9",
+        model_size="s",
+        task="detect",
+        save_dir="/tmp/libreyolo",
+        train_loss=1.75,
+        train_loss_items={"box": 0.25, "cls": 0.35},
+        lr={"group0": 0.005},
     )
 
 
@@ -446,6 +465,7 @@ def test_wandb_logger_failed_run_exit_code(fake_wandb):
 def test_tensorboard_logger_full_lifecycle(fake_tensorboard, tmp_path):
     logger = TensorBoardLogger()
     logger.on_train_start(_start_event(save_dir=str(tmp_path)))
+    logger.on_train_step_end(_step_event())
     logger.on_train_epoch_end(_epoch_event())
     logger.on_train_end(_end_event(save_dir=str(tmp_path)))
 
@@ -455,7 +475,16 @@ def test_tensorboard_logger_full_lifecycle(fake_tensorboard, tmp_path):
     tags = {tag for tag, _, _ in writer.scalars}
     assert "train/loss" in tags
     assert "val/mAP50" in tags
-    assert all(step == 1 for _, _, step in writer.scalars)
+    assert "train_step/loss" in tags
+    assert "train_step/loss/box" in tags
+    assert "train_step/lr/min" in tags
+    assert "train_step/lr/max" in tags
+    assert {
+        step for tag, _, step in writer.scalars if tag.startswith("train_step/")
+    } == {13}
+    assert {step for tag, _, step in writer.scalars if not tag.startswith("train_step/")} == {
+        1
+    }
     assert writer.closed is True
 
 
